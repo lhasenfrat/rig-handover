@@ -20,9 +20,12 @@ export function createApp(config: RigConfig = loadConfig()) {
     ),
   );
 
+  // The page and the JSON read a night through this one call, so they never disagree (ADR 0001).
+  const digestOf = (night: string) => (/^\d{4}-\d{2}-\d{2}$/.test(night) ? readNight(config.runsDir, night) : null);
+
   app.get('/digest/:night', (c) => {
     const night = c.req.param('night');
-    const digest = /^\d{4}-\d{2}-\d{2}$/.test(night) ? readNight(config.runsDir, night) : null;
+    const digest = digestOf(night);
     if (!digest) {
       return c.html(
         <Layout title={`digest · ${night}`} lane={lane()}>
@@ -36,6 +39,13 @@ export function createApp(config: RigConfig = loadConfig()) {
         <DigestPage digest={digest} />
       </Layout>,
     );
+  });
+
+  app.get('/api/digest/:night', (c) => {
+    const night = c.req.param('night');
+    const digest = digestOf(night);
+    if (!digest) return c.json({ error: `no run log for ${night}` }, 404);
+    return c.json(digest);
   });
 
   return app;
